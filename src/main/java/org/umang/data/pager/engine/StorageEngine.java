@@ -1,45 +1,67 @@
 package org.umang.data.pager.engine;
 
+import static org.umang.data.pager.index.InMemoryIndex.NOT_FOUND;
+
 import java.io.IOException;
-import java.nio.ByteBuffer;
 import java.nio.file.Path;
-import java.util.Optional;
-import org.umang.data.pager.storage.DataStore;
+import org.umang.data.pager.codec.Record;
+import org.umang.data.pager.index.InMemoryIndex;
+import org.umang.data.pager.index.OffsetIndex;
+import org.umang.data.pager.storage.AppendOnlyStore;
 import org.umang.data.pager.storage.MmapFileStore;
 
 public class StorageEngine implements KeyValueStore {
 
-  private final DataStore indexStore;
-  private final DataStore dataStore;
+  private final OffsetIndex index;
+  private final AppendOnlyStore store;
 
-  public StorageEngine(DataStore indexStore, DataStore dataStore) throws IOException {
-    this.indexStore = indexStore;
-    this.dataStore = dataStore;
+  public StorageEngine(OffsetIndex index, AppendOnlyStore store) throws IOException {
+    this.index = index;
+    this.store = store;
   }
 
   public static StorageEngine open(String filename) throws IOException {
-    Path filePath = Path.of("/tmp/" + filename.trim() + ".pager.db");
-    Path indexPath = Path.of("/tmp/" + filename.trim() + ".pager.index");
-    return new StorageEngine(new MmapFileStore(indexPath), new MmapFileStore(filePath));
+    return open(filename, EngineConfig.defaults());
+  }
+
+  public static StorageEngine open(String filename, EngineConfig engineConfig) throws IOException {
+    Path filePath = Path.of(engineConfig.dir() + filename.trim() + ".pager.db");
+    return new StorageEngine(new InMemoryIndex(), new MmapFileStore(filePath));
   }
 
   @Override
-  public Optional<ByteBuffer> get(ByteBuffer key) throws IOException {
-    return Optional.empty();
+  public byte[] get(byte[] key) throws IOException {
+    long offset = index.getOffset(key);
+    if (offset == NOT_FOUND) {
+      return null;
+    }
+    Record record = store.read(offset);
+    if (record == null) {
+      return null;
+    }
+    return record.value();
   }
 
   @Override
-  public void put(ByteBuffer key, ByteBuffer value) throws IOException {
-
+  public void put(byte[] key, byte[] value) throws IOException {
+    Record record = new Record(key, value);
+    long offset = store.write(record);
+    index.putOffset(key, offset);
   }
 
   @Override
-  public void delete(ByteBuffer key) throws IOException {
-
+  public void delete(byte[] key) throws IOException {
+    long offset = index.getOffset(key);
+    if (offset == NOT_FOUND) {
+      return;
+    }
+    store.delete(offset);
+    index.delete(key);
   }
 
   @Override
   public void close() throws IOException {
-
+    index.close();
+    store.close();
   }
 }

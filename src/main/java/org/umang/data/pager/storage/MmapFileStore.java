@@ -10,7 +10,7 @@ import java.nio.file.StandardOpenOption;
 import org.umang.data.pager.codec.Record;
 import org.umang.data.pager.codec.RecordCodec;
 
-public class MmapFileStore implements DataStore {
+public class MmapFileStore implements AppendOnlyStore {
 
   private static final int SHIFT = 30;
   private static final int MASK = 0x3FFFFFFF;
@@ -121,5 +121,10 @@ public class MmapFileStore implements DataStore {
     fileChannel.position(requiredSize - 1);
     ZERO.rewind();
     fileChannel.write(ZERO);
+  }
+
+  @Override
+  public void close() throws IOException {
+    fileChannel.close();
   }
 }
