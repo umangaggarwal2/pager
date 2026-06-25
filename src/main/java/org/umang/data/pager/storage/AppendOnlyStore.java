@@ -11,6 +11,8 @@ public interface AppendOnlyStore extends AutoCloseable {
 
   void delete(long offset);
 
+  long fileSize() throws IOException;
+
   @Override
   void close() throws IOException;
 }

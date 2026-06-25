@@ -32,6 +32,11 @@ public class InMemoryIndex implements OffsetIndex {
   }
 
   @Override
+  public long size() {
+    return offsetMap.size();
+  }
+
+  @Override
   public void close() throws IOException {
   }
 }

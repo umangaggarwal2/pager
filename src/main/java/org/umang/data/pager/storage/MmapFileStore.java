@@ -74,6 +74,11 @@ public class MmapFileStore implements AppendOnlyStore {
     RecordCodec.markTombstone(chunk, localOffset);
   }
 
+  @Override
+  public long fileSize() throws IOException {
+    return fileChannel.size();
+  }
+
   private void initSuperblock() throws IOException {
     if (fileChannel.size() == 0) {
       growStorage();
